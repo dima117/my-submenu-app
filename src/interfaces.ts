@@ -7,7 +7,13 @@ export interface TmpMenuItemBase {
 
 export interface TmpMenuItemMenu extends TmpMenuItemBase {
     type: 'menu';
-    items: TmpMenuItem[];
+    items: TmpMenuAnyItem[];
+    key: string;
+}
+
+export interface TmpMenuItemSection extends TmpMenuItemBase {
+    type: 'section';
+    items: TmpMenuSingleItem[];
     key: string;
 }
 
@@ -23,12 +29,14 @@ export interface TmpMenuItemLink extends TmpMenuItemBase {
     target?: string;
 }
 
-export type TmpMenuItem = TmpMenuItemOption | TmpMenuItemLink | TmpMenuItemMenu;
+export type TmpMenuSingleItem = TmpMenuItemOption | TmpMenuItemLink | TmpMenuItemMenu;
+export type TmpMenuAnyItem = TmpMenuSingleItem | TmpMenuItemSection;
 
-export const getItemKey = (item: TmpMenuItem): string => {
+export const getItemKey = (item: TmpMenuAnyItem): string => {
     switch (item.type) {
         case 'link':
         case 'menu':
+        case 'section':
             return item.key;
         case 'option':
             return item.value;

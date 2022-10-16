@@ -1,9 +1,10 @@
-// import { PressEvent } from "@react-types/shared";
+import { Node } from "@react-types/shared";
 import {
   useListState,
   ListProps,
   ListState,
   Item,
+  Section,
   useMenuTriggerState,
 } from "react-stately";
 import {
@@ -13,14 +14,17 @@ import {
   usePress,
   mergeProps,
   useMenuTrigger,
+  useListBoxSection,
+  useSeparator,
 } from "react-aria";
 import { FC, ReactNode, useRef } from "react";
 import {
-  TmpMenuItem,
+  TmpMenuAnyItem,
   TmpMenuItemOption,
   TmpMenuItemLink,
   TmpMenuItemMenu,
   getItemKey,
+  TmpMenuItemSection,
 } from "./interfaces";
 import { MenuPopup } from "./components/MenuPopup";
 import { MenuItemContent } from "./components/MenuItemContent";
@@ -31,9 +35,23 @@ const cls = cn("MenuItem");
 
 const getCls = (focus: boolean, selected: boolean) => cls({ focus, selected });
 
+export function MenuItemRenderer(item: TmpMenuAnyItem) {
+  if (item.type === "section") {
+    const items = item.items.map(MenuItemRenderer);
+
+    return <Section title={item.text}>{items}</Section>;
+  }
+
+  return (
+    <Item key={getItemKey(item)}>
+      <MenuItemContent item={item} />
+    </Item>
+  );
+}
+
 export const MenuOption: FC<{
   item: TmpMenuItemOption;
-  state: ListState<TmpMenuItem>;
+  state: ListState<TmpMenuAnyItem>;
   children: ReactNode;
 }> = ({ item, children, state }) => {
   // Get props for the option element
@@ -65,17 +83,9 @@ const onPress = (...args: unknown[]) => {
   console.log(args);
 };
 
-export function MenuItemRenderer(item: TmpMenuItem) {
-  return (
-    <Item key={getItemKey(item)}>
-      <MenuItemContent item={item} />
-    </Item>
-  );
-}
-
 export const MenuMenu: FC<{
   item: TmpMenuItemMenu;
-  state: ListState<TmpMenuItem>;
+  state: ListState<TmpMenuAnyItem>;
   children: ReactNode;
 }> = ({ item, children, state }) => {
   let ref = useRef(null);
@@ -112,7 +122,7 @@ export const MenuMenu: FC<{
 
 export const MenuLink: FC<{
   item: TmpMenuItemLink;
-  state: ListState<TmpMenuItem>;
+  state: ListState<TmpMenuAnyItem>;
   children: ReactNode;
 }> = ({ item, state, children }) => {
   // Get props for the option element
@@ -142,51 +152,97 @@ export const MenuLink: FC<{
   );
 };
 
-export const Menu: FC<ListProps<TmpMenuItem>> = (props) => {
+export const MenuSection: FC<{
+  item: TmpMenuItemSection;
+  state: ListState<TmpMenuAnyItem>;
+  children: ReactNode;
+  childNodes: Iterable<Node<TmpMenuAnyItem>>;
+}> = ({ item, state, children, childNodes }) => {
+  let { itemProps, headingProps, groupProps } = useListBoxSection({
+    heading: children,
+  });
+
+  let { separatorProps } = useSeparator({
+    elementType: "li",
+  });
+
+  const isFirst = item.key !== state.collection.getFirstKey();
+  const separator = isFirst ? null : (
+    <div {...separatorProps} style={{ borderTop: "1px solid gray" }}></div>
+  );
+
+  const title = children ? <div {...headingProps}>{children}</div> : null;
+
+  const items = Array.from(childNodes).map((node, index) => {
+    node.value = item.items[index]; // FIXME
+
+    return (
+      <MenuAnyItem key={getItemKey(node.value)} node={node} state={state} />
+    );
+  });
+
+  return (
+    <>
+      {separator}
+      <div {...itemProps}>{title}</div>
+      <div {...groupProps}>{items}</div>
+    </>
+  );
+};
+
+export const MenuAnyItem: FC<{
+  node: Node<TmpMenuAnyItem>;
+  state: ListState<TmpMenuAnyItem>;
+}> = ({ node, state }) => {
+  const data = node.value;
+
+  if (data) {
+    switch (data.type) {
+      case "option":
+        return (
+          <MenuOption key={data.value} item={data} state={state}>
+            {node.rendered}
+          </MenuOption>
+        );
+
+      case "section":
+        return (
+          <MenuSection
+            key={data.key}
+            item={data}
+            state={state}
+            childNodes={node.childNodes}
+          >
+            {node.rendered}
+          </MenuSection>
+        );
+      case "menu":
+        return (
+          <MenuMenu key={data.key} item={data} state={state}>
+            {node.rendered}
+          </MenuMenu>
+        );
+      case "link":
+        return (
+          <MenuLink key={data.key} item={data} state={state}>
+            {node.rendered}
+          </MenuLink>
+        );
+    }
+  }
+
+  return null;
+};
+
+export const Menu: FC<ListProps<TmpMenuAnyItem>> = (props) => {
   let state = useListState(props);
 
   let ref = useRef<HTMLDivElement>(null);
   let { listBoxProps } = useListBox(props, state, ref);
 
-  const items = Array.from(state.collection).map((node) => {
-    const data = node.value;
-
-    if (data) {
-      switch (data.type) {
-        case "option":
-          return (
-            <MenuOption key={data.value} item={data} state={state}>
-              {node.rendered}
-            </MenuOption>
-          );
-        case "menu":
-          return (
-            <MenuMenu key={data.key} item={data} state={state}>
-              {node.rendered}
-            </MenuMenu>
-          );
-        case "link":
-          return (
-            <MenuLink key={data.key} item={data} state={state}>
-              {node.rendered}
-            </MenuLink>
-          );
-      }
-    }
-
-    const { key, rendered } = node;
-    const stub: TmpMenuItemOption = {
-      text: rendered,
-      value: String(key),
-      type: "option",
-    };
-
-    return (
-      <MenuOption key={node.key} item={stub} state={state}>
-        {node.rendered}
-      </MenuOption>
-    );
-  });
+  const items = Array.from(state.collection).map((node) => (
+    <MenuAnyItem key={getItemKey(node.value)} node={node} state={state} />
+  ));
 
   return (
     <div
