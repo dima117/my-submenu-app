@@ -1,4 +1,4 @@
-import { Node } from "@react-types/shared";
+import { Node, PressEvent } from "@react-types/shared";
 import {
   useListState,
   ListProps,
@@ -6,18 +6,29 @@ import {
   Item,
   Section,
   useMenuTriggerState,
+  MenuTriggerState,
 } from "react-stately";
+
+import { useId } from "@react-aria/utils";
 import {
   useListBox,
   useOption,
   useFocusRing,
   usePress,
   mergeProps,
-  useMenuTrigger,
   useListBoxSection,
   useSeparator,
+  useOverlayTrigger,
+  AriaMenuTriggerProps,
+  MenuTriggerAria,
 } from "react-aria";
-import { FC, ReactNode, useRef } from "react";
+import {
+  FC,
+  ReactNode,
+  useRef,
+  RefObject,
+  KeyboardEvent,
+} from "react";
 import {
   TmpMenuAnyItem,
   TmpMenuItemOption,
@@ -83,6 +94,83 @@ const onPress = (...args: unknown[]) => {
   console.log(args);
 };
 
+export function useMenuTrigger2<T>(
+  props: Omit<AriaMenuTriggerProps, "trigger">,
+  state: MenuTriggerState,
+  ref: RefObject<Element>
+): MenuTriggerAria<T> {
+  let { type = "menu", isDisabled } = props;
+
+  const menuTriggerId = useId();
+
+  const { triggerProps, overlayProps } = useOverlayTrigger(
+    { type },
+    state,
+    ref
+  );
+
+  delete triggerProps.onPress;
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (isDisabled) {
+      return;
+    }
+
+    if (ref && ref.current) {
+      switch (e.key) {
+        case "Enter":
+        case " ":
+        // fallthrough
+        case "ArrowRight":
+          e.stopPropagation();
+          e.preventDefault();
+          state.toggle("first");
+          break;
+        case "ArrowLeft":
+          e.stopPropagation();
+          e.preventDefault();
+          state.close();
+          break;
+      }
+    }
+  };
+
+  let pressProps = {
+    onPressStart(e: PressEvent) {
+      // For consistency with native, open the menu on mouse/key down, but touch up.
+      if (
+        e.pointerType !== "touch" &&
+        e.pointerType !== "keyboard" &&
+        !isDisabled
+      ) {
+        // If opened with a screen reader, auto focus the first item.
+        // Otherwise, the menu itself will be focused.
+        state.toggle(e.pointerType === "virtual" ? "first" : null);
+      }
+    },
+    onPress(e: PressEvent) {
+      if (e.pointerType === "touch" && !isDisabled) {
+        state.toggle();
+      }
+    },
+  };
+
+  return {
+    menuTriggerProps: {
+      ...triggerProps,
+      ...pressProps,
+      id: menuTriggerId,
+      onKeyDown
+    },
+    menuProps: {
+      ...overlayProps,
+      'aria-labelledby': menuTriggerId,
+      autoFocus: state.focusStrategy,
+      onClose: state.close
+    }
+  };
+}
+
 export const MenuMenu: FC<{
   item: TmpMenuItemMenu;
   state: ListState<TmpMenuAnyItem>;
@@ -90,22 +178,24 @@ export const MenuMenu: FC<{
 }> = ({ item, children, state }) => {
   let ref = useRef(null);
 
+  let { optionProps, isSelected, isDisabled } = useOption({ key: item.key }, state, ref);
+
   let triggerState = useMenuTriggerState({});
 
-  const { menuTriggerProps, menuProps } = useMenuTrigger({}, triggerState, ref);
+  const { menuTriggerProps, menuProps } = useMenuTrigger2({ isDisabled }, triggerState, ref);
+
   const { onPress, onPressStart, ...restTriggerProps } = menuTriggerProps;
 
-
-  let { optionProps, isSelected, isDisabled } = useOption(
-    { key: item.key },
-    state,
-    ref
-  );
   const { pressProps } = usePress({ isDisabled, ref, onPress, onPressStart }); // FIXME
 
   let { isFocusVisible, focusProps } = useFocusRing();
 
-  const mergedProps = mergeProps(restTriggerProps, optionProps, focusProps, pressProps);
+  const mergedProps = mergeProps(
+    restTriggerProps,
+    optionProps,
+    focusProps,
+    pressProps
+  );
 
   return (
     <>
@@ -168,7 +258,7 @@ export const MenuSection: FC<{
   });
 
   let { separatorProps } = useSeparator({
-    elementType: "li",
+    elementType: "div",
   });
 
   const isFirst = item.key !== state.collection.getFirstKey();
@@ -179,7 +269,7 @@ export const MenuSection: FC<{
   const title = children ? <div {...headingProps}>{children}</div> : null;
 
   const items = Array.from(childNodes).map((node, index) => {
-    node.value = item.items[index]; // FIXME
+    node.value = item.items[index]; // FIXME у дочерних node не заполняется value
 
     return (
       <MenuAnyItem key={getItemKey(node.value)} node={node} state={state} />
