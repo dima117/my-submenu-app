@@ -1,5 +1,11 @@
 // import { PressEvent } from "@react-types/shared";
-import { useListState, ListProps, ListState, Item, useMenuTriggerState } from "react-stately";
+import {
+  useListState,
+  ListProps,
+  ListState,
+  Item,
+  useMenuTriggerState,
+} from "react-stately";
 import {
   useListBox,
   useOption,
@@ -16,6 +22,7 @@ import {
   TmpMenuItemMenu,
   getItemKey,
 } from "./interfaces";
+import { MenuPopup } from "./components/MenuPopup";
 
 export const MenuOption: FC<{
   item: TmpMenuItemOption;
@@ -75,21 +82,9 @@ export const MenuMenu: FC<{
 
   let { menuTriggerProps, menuProps } = useMenuTrigger({}, triggerState, ref);
 
-  let { optionProps, isSelected, isDisabled } = useOption(
-    { key: item.key },
-    state,
-    ref
-  );
-
+  let { optionProps, isSelected, isDisabled } = useOption({ key: item.key }, state, ref);
   const { pressProps } = usePress({ isDisabled, ref, onPress });
-
-  // Determine whether we should show a keyboard
-  // focus ring for accessibility
   let { isFocusVisible, focusProps } = useFocusRing();
-
-  const menu = !triggerState.isOpen ? null : (
-    <Menu {...menuProps} items={item.items}>{MenuItemRenderer}</Menu>
-  );
 
   return (
     <>
@@ -109,7 +104,11 @@ export const MenuMenu: FC<{
       >
         {children}
       </div>
-      {menu}
+      <MenuPopup anchorRef={ref} visible={triggerState.isOpen}>
+        <Menu {...menuProps} items={item.items}>
+          {MenuItemRenderer}
+        </Menu>
+      </MenuPopup>
     </>
   );
 };
