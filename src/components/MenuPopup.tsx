@@ -18,6 +18,7 @@ export const MenuPopup: FC<MenuPopupProps> = (props) => {
     popperRef.current,
     {
       placement: "right-start",
+      modifiers: [{ name: 'hide', enabled: true, phase: 'main' }],
     }
   );
 

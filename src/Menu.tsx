@@ -92,20 +92,25 @@ export const MenuMenu: FC<{
 
   let triggerState = useMenuTriggerState({});
 
-  let { menuTriggerProps, menuProps } = useMenuTrigger({}, triggerState, ref);
+  const { menuTriggerProps, menuProps } = useMenuTrigger({}, triggerState, ref);
+  const { onPress, onPressStart, ...restTriggerProps } = menuTriggerProps;
+
 
   let { optionProps, isSelected, isDisabled } = useOption(
     { key: item.key },
     state,
     ref
   );
-  const { pressProps } = usePress({ isDisabled, ref, onPress });
+  const { pressProps } = usePress({ isDisabled, ref, onPress, onPressStart }); // FIXME
+
   let { isFocusVisible, focusProps } = useFocusRing();
+
+  const mergedProps = mergeProps(restTriggerProps, optionProps, focusProps, pressProps);
 
   return (
     <>
       <div
-        {...mergeProps(menuTriggerProps, optionProps, focusProps, pressProps)}
+        {...mergedProps}
         ref={ref}
         className={getCls(isFocusVisible, isSelected)}
       >
