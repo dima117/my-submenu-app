@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 
 export interface TmpMenuItemBase {
     text: ReactNode;
+    hint?: ReactNode;
 }
 
 export interface TmpMenuItemMenu extends TmpMenuItemBase {

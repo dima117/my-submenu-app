@@ -23,6 +23,13 @@ import {
   getItemKey,
 } from "./interfaces";
 import { MenuPopup } from "./components/MenuPopup";
+import { MenuItemContent } from "./components/MenuItemContent";
+
+import { cn } from "@bem-react/classname";
+
+const cls = cn("MenuItem");
+
+const getCls = (focus: boolean, selected: boolean) => cls({ focus, selected });
 
 export const MenuOption: FC<{
   item: TmpMenuItemOption;
@@ -47,16 +54,7 @@ export const MenuOption: FC<{
     <div
       {...mergeProps(optionProps, focusProps, pressProps)}
       ref={ref}
-      style={{
-        background: isSelected
-          ? "blueviolet"
-          : isFocusVisible
-          ? "#99f"
-          : "transparent",
-        color: isDisabled ? "#aaa" : isSelected ? "white" : undefined,
-        padding: "2px 5px",
-        outline: "none",
-      }}
+      className={getCls(isFocusVisible, isSelected)}
     >
       {children}
     </div>
@@ -68,7 +66,11 @@ const onPress = (...args: unknown[]) => {
 };
 
 export function MenuItemRenderer(item: TmpMenuItem) {
-  return <Item key={getItemKey(item)}>{item.text}</Item>;
+  return (
+    <Item key={getItemKey(item)}>
+      <MenuItemContent item={item} />
+    </Item>
+  );
 }
 
 export const MenuMenu: FC<{
@@ -82,7 +84,11 @@ export const MenuMenu: FC<{
 
   let { menuTriggerProps, menuProps } = useMenuTrigger({}, triggerState, ref);
 
-  let { optionProps, isSelected, isDisabled } = useOption({ key: item.key }, state, ref);
+  let { optionProps, isSelected, isDisabled } = useOption(
+    { key: item.key },
+    state,
+    ref
+  );
   const { pressProps } = usePress({ isDisabled, ref, onPress });
   let { isFocusVisible, focusProps } = useFocusRing();
 
@@ -91,16 +97,7 @@ export const MenuMenu: FC<{
       <div
         {...mergeProps(menuTriggerProps, optionProps, focusProps, pressProps)}
         ref={ref}
-        style={{
-          background: isSelected
-            ? "blueviolet"
-            : isFocusVisible
-            ? "#99f"
-            : "transparent",
-          color: isDisabled ? "#aaa" : isSelected ? "white" : undefined,
-          padding: "2px 5px",
-          outline: "none",
-        }}
+        className={getCls(isFocusVisible, isSelected)}
       >
         {children}
       </div>
@@ -138,17 +135,7 @@ export const MenuLink: FC<{
       ref={ref}
       href={item.url}
       target={item.target}
-      style={{
-        display: "block",
-        background: isSelected
-          ? "blueviolet"
-          : isFocusVisible
-          ? "#99f"
-          : "transparent",
-        color: isDisabled ? "#aaa" : isSelected ? "white" : undefined,
-        padding: "2px 5px",
-        outline: "none",
-      }}
+      className={getCls(isFocusVisible, isSelected)}
     >
       {children}
     </a>

@@ -5,13 +5,13 @@ import { Menu, MenuItemRenderer } from "./Menu";
 import { TmpMenuItem } from "./interfaces";
 
 const items: TmpMenuItem[] = [
-  { type: "option", text: "AAA", value: "1" },
-  { type: "option", text: "BBB", value: "2" },
-  { type: "option", text: "CCC", value: "3" },
-  { type: "option", text: "DDD", value: "4" },
+  { type: "option", text: "Корова", hint: 'Животное', value: "1" },
+  { type: "option", text: "Мышь", hint: 'Животное', value: "2" },
+  { type: "option", text: "Окунь", hint: 'Рыба', value: "3" },
+  { type: "option", text: "Шиповник", hint: 'Растение', value: "4" },
   {
     type: "menu",
-    text: "MINU",
+    text: "Инструменты",
     key: "5",
     items: [
         { type: "option", text: "DDD-51", value: "5-1" },

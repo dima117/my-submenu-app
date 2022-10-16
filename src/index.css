@@ -11,3 +11,35 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.MenuItemContent {
+    padding: 8px 12px;
+    color: var(--menu-item-content-color);
+}
+
+.MenuItemContent-Text {
+    font-weight: bold;
+}
+
+.MenuItemContent-Hint {
+    font-size: 0.7rem;
+    line-height: 1rem;
+    opacity: 0.7;
+}
+
+.MenuItem {
+    display: block;
+    cursor: default;
+    outline: none;
+    text-decoration: none;
+    --menu-item-content-color: #000;
+}
+
+.MenuItem:hover {
+    background: #c6e2ff;
+}
+
+.MenuItem.MenuItem_focus {
+    --menu-item-content-color: #fff;
+    background: #0062c6;
+}
