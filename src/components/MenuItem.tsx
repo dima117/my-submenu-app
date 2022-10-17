@@ -1,7 +1,5 @@
 import { Node, PressEvent } from "@react-types/shared";
 import {
-  useListState,
-  ListProps,
   ListState,
   Item,
   Section,
@@ -11,7 +9,6 @@ import {
 
 import { useId } from "@react-aria/utils";
 import {
-  useListBox,
   useOption,
   useFocusRing,
   usePress,
@@ -22,13 +19,7 @@ import {
   AriaMenuTriggerProps,
   MenuTriggerAria,
 } from "react-aria";
-import {
-  FC,
-  ReactNode,
-  useRef,
-  RefObject,
-  KeyboardEvent,
-} from "react";
+import { FC, ReactNode, useRef, RefObject, KeyboardEvent } from "react";
 import {
   TmpMenuAnyItem,
   TmpMenuItemOption,
@@ -36,15 +27,21 @@ import {
   TmpMenuItemMenu,
   getItemKey,
   TmpMenuItemSection,
-} from "./interfaces";
-import { MenuPopup } from "./components/MenuPopup";
-import { MenuItemContent } from "./components/MenuItemContent";
+} from "../interfaces";
+import { MenuPopup } from "./MenuPopup";
+import { MenuItemContent } from "./MenuItemContent";
 
 import { cn } from "@bem-react/classname";
+import { Menu } from "./Menu";
 
 const cls = cn("MenuItem");
 
 const getCls = (focus: boolean, selected: boolean) => cls({ focus, selected });
+
+const onPress = (...args: unknown[]) => {
+  // заглушка для обработки выбора пунктов меню
+  console.log(args);
+};
 
 export function MenuItemRenderer(item: TmpMenuAnyItem) {
   if (item.type === "section") {
@@ -59,40 +56,6 @@ export function MenuItemRenderer(item: TmpMenuAnyItem) {
     </Item>
   );
 }
-
-export const MenuOption: FC<{
-  item: TmpMenuItemOption;
-  state: ListState<TmpMenuAnyItem>;
-  children: ReactNode;
-}> = ({ item, children, state }) => {
-  // Get props for the option element
-  let ref = useRef(null);
-  let { optionProps, isSelected, isDisabled } = useOption(
-    { key: item.value },
-    state,
-    ref
-  );
-
-  const { pressProps } = usePress({ isDisabled, ref, onPress });
-
-  // Determine whether we should show a keyboard
-  // focus ring for accessibility
-  let { isFocusVisible, focusProps } = useFocusRing();
-
-  return (
-    <div
-      {...mergeProps(optionProps, focusProps, pressProps)}
-      ref={ref}
-      className={getCls(isFocusVisible, isSelected)}
-    >
-      {children}
-    </div>
-  );
-};
-
-const onPress = (...args: unknown[]) => {
-  console.log(args);
-};
 
 export function useMenuTrigger2<T>(
   props: Omit<AriaMenuTriggerProps, "trigger">,
@@ -160,16 +123,46 @@ export function useMenuTrigger2<T>(
       ...triggerProps,
       ...pressProps,
       id: menuTriggerId,
-      onKeyDown
+      onKeyDown,
     },
     menuProps: {
       ...overlayProps,
-      'aria-labelledby': menuTriggerId,
+      "aria-labelledby": menuTriggerId,
       autoFocus: state.focusStrategy,
-      onClose: state.close
-    }
+      onClose: state.close,
+    },
   };
 }
+
+export const MenuOption: FC<{
+  item: TmpMenuItemOption;
+  state: ListState<TmpMenuAnyItem>;
+  children: ReactNode;
+}> = ({ item, children, state }) => {
+  // Get props for the option element
+  let ref = useRef(null);
+  let { optionProps, isSelected, isDisabled } = useOption(
+    { key: item.value },
+    state,
+    ref
+  );
+
+  const { pressProps } = usePress({ isDisabled, ref, onPress });
+
+  // Determine whether we should show a keyboard
+  // focus ring for accessibility
+  let { isFocusVisible, focusProps } = useFocusRing();
+
+  return (
+    <div
+      {...mergeProps(optionProps, focusProps, pressProps)}
+      ref={ref}
+      className={getCls(isFocusVisible, isSelected)}
+    >
+      {children}
+    </div>
+  );
+};
 
 export const MenuMenu: FC<{
   item: TmpMenuItemMenu;
@@ -178,11 +171,19 @@ export const MenuMenu: FC<{
 }> = ({ item, children, state }) => {
   let ref = useRef(null);
 
-  let { optionProps, isSelected, isDisabled } = useOption({ key: item.key }, state, ref);
+  let { optionProps, isSelected, isDisabled } = useOption(
+    { key: item.key },
+    state,
+    ref
+  );
 
   let triggerState = useMenuTriggerState({});
 
-  const { menuTriggerProps, menuProps } = useMenuTrigger2({ isDisabled }, triggerState, ref);
+  const { menuTriggerProps, menuProps } = useMenuTrigger2(
+    { isDisabled },
+    triggerState,
+    ref
+  );
 
   const { onPress, onPressStart, ...restTriggerProps } = menuTriggerProps;
 
@@ -279,8 +280,8 @@ export const MenuSection: FC<{
   return (
     <>
       {separator}
-      <div {...itemProps}>{title}</div>
-      <div {...groupProps}>{items}</div>
+      <div {...itemProps} className={cls('SectionTitle')}>{title}</div>
+      <div {...groupProps} className={cls('SectionItems')}>{items}</div>
     </>
   );
 };
@@ -327,32 +328,4 @@ export const MenuAnyItem: FC<{
   }
 
   return null;
-};
-
-export const Menu: FC<ListProps<TmpMenuAnyItem>> = (props) => {
-  let state = useListState(props);
-
-  let ref = useRef<HTMLDivElement>(null);
-  let { listBoxProps } = useListBox(props, state, ref);
-
-  const items = Array.from(state.collection).map((node) => (
-    <MenuAnyItem key={getItemKey(node.value)} node={node} state={state} />
-  ));
-
-  return (
-    <div
-      {...listBoxProps}
-      ref={ref}
-      style={{
-        padding: 0,
-        margin: "5px 0",
-        border: "1px solid gray",
-        maxWidth: 250,
-        maxHeight: 300,
-        overflow: "auto",
-      }}
-    >
-      {items}
-    </div>
-  );
 };
