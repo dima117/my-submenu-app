@@ -26,6 +26,8 @@ import {
   KeyboardEvent,
   MouseEvent,
   useCallback,
+  useContext,
+  useEffect,
 } from "react";
 import {
   TmpMenuAnyItem,
@@ -40,6 +42,7 @@ import { MenuItemContent } from "./MenuItemContent";
 
 import { cn } from "@bem-react/classname";
 import { Menu } from "./Menu";
+import { MenuContext } from "./MenuContext";
 
 const cls = cn("MenuItem");
 
@@ -234,6 +237,8 @@ export const MenuMenu: FC<{
 }> = ({ item, children, state, onSelect, onCancel }) => {
   let ref = useRef<HTMLDivElement>(null);
 
+  const context = useContext(MenuContext);
+
   let { optionProps, isSelected, isDisabled } = useOption(
     { key: item.key },
     state,
@@ -241,6 +246,17 @@ export const MenuMenu: FC<{
   );
 
   let triggerState = useMenuTriggerState({});
+
+  const tmp = useCallback(() => {
+    triggerState.close();
+  }, [triggerState]);
+
+  useEffect(() => {
+    if (context) {
+      context.e.addEventListener("select", tmp);
+      return () => context.e.removeEventListener("select", tmp);
+    }
+  }, [context, tmp]);
 
   const { menuTriggerProps, menuProps } = useMenuTrigger2(
     { isDisabled },
