@@ -51,7 +51,17 @@ const items: TmpMenuAnyItem[] = [
       },
     ],
   },
-  { type: "link", text: "GO GO GO", hint: 'сылка', url: "http://ya.ru", key: "6" },
+  { type: "link", text: "Перейти на Яндекс", hint: 'сылка', url: "http://ya.ru", key: "6" },
+  {
+    type: "menu",
+    text: "Игрушки →",
+    hint: 'из магазина',
+    key: "7",
+    items: [
+        { type: "option", text: "Мишка", hint: "мягкая игрушка", value: "7-1" },
+        { type: "option", text: "Самолет", hint: "из дерева", value: "7-2" },
+    ],
+  },
 ];
 
 function App() {
