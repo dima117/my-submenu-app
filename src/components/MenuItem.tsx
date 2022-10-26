@@ -160,8 +160,6 @@ const useXxxEvents = (args: XxxEventsArgs = {}) => {
   const onKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!isDisabled && !e.repeat) {
-        e.stopPropagation();
-
         console.log("press >> ", e.key);
 
         switch (e.key) {
