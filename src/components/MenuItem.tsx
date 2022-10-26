@@ -11,7 +11,6 @@ import { useId } from "@react-aria/utils";
 import {
   useOption,
   useFocusRing,
-  usePress,
   mergeProps,
   useListBoxSection,
   useSeparator,
@@ -19,7 +18,15 @@ import {
   AriaMenuTriggerProps,
   MenuTriggerAria,
 } from "react-aria";
-import { FC, ReactNode, useRef, RefObject, KeyboardEvent } from "react";
+import {
+  FC,
+  ReactNode,
+  useRef,
+  RefObject,
+  KeyboardEvent,
+  MouseEvent,
+  useCallback,
+} from "react";
 import {
   TmpMenuAnyItem,
   TmpMenuItemOption,
@@ -37,11 +44,6 @@ import { Menu } from "./Menu";
 const cls = cn("MenuItem");
 
 const getCls = (focus: boolean, selected: boolean) => cls({ focus, selected });
-
-const onPress = (...args: unknown[]) => {
-  // заглушка для обработки выбора пунктов меню
-  console.log(args);
-};
 
 export function MenuItemRenderer(item: TmpMenuAnyItem) {
   if (item.type === "section") {
@@ -134,11 +136,70 @@ export function useMenuTrigger2<T>(
   };
 }
 
+interface XxxKeyboardEvent {
+  source: "keyboard";
+  e: KeyboardEvent;
+}
+
+interface XxxMouseEvent {
+  source: "mouse";
+  e: MouseEvent;
+}
+
+export type XxxEvent = XxxKeyboardEvent | XxxMouseEvent;
+
+interface XxxEventsArgs {
+  onSelect?: (e: XxxEvent) => void;
+  onCancel?: (e: XxxEvent) => void;
+  isDisabled?: boolean;
+}
+
+const useXxxEvents = (args: XxxEventsArgs = {}) => {
+  const { onSelect, onCancel, isDisabled } = args;
+
+  const onKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!isDisabled && !e.repeat) {
+        e.stopPropagation();
+
+        console.log("press >> ", e.key);
+
+        switch (e.key) {
+          case " ":
+          case "Enter":
+            onSelect?.({ source: "keyboard", e });
+            break;
+          case "ArrowLeft":
+          case "Escape":
+            onCancel?.({ source: "keyboard", e });
+            break;
+        }
+      }
+    },
+    [onSelect, onCancel, isDisabled]
+  );
+
+  const onClick = useCallback(
+    (e: MouseEvent) => {
+      console.log("click >> ", e);
+
+      if (!isDisabled && e.button === 0) {
+        onSelect?.({ source: "mouse", e });
+      }
+    },
+    [onSelect, isDisabled]
+  );
+
+  return { onKeyDown, onClick };
+};
+
 export const MenuOption: FC<{
   item: TmpMenuItemOption;
   state: ListState<TmpMenuAnyItem>;
   children: ReactNode;
-}> = ({ item, children, state }) => {
+  onSelect?: (e: XxxEvent) => void;
+  onCancel?: (e: XxxEvent) => void;
+}> = ({ item, children, state, onSelect, onCancel }) => {
   // Get props for the option element
   let ref = useRef(null);
   let { optionProps, isSelected, isDisabled } = useOption(
@@ -147,7 +208,9 @@ export const MenuOption: FC<{
     ref
   );
 
-  const { pressProps } = usePress({ isDisabled, ref, onPress });
+  const pressProps = useXxxEvents({ onSelect, onCancel, isDisabled });
+
+  //   const { pressProps } = usePress({ isDisabled, ref, onPress });
 
   // Determine whether we should show a keyboard
   // focus ring for accessibility
@@ -168,8 +231,10 @@ export const MenuMenu: FC<{
   item: TmpMenuItemMenu;
   state: ListState<TmpMenuAnyItem>;
   children: ReactNode;
-}> = ({ item, children, state }) => {
-  let ref = useRef(null);
+  onSelect?: (e: XxxEvent) => void;
+  onCancel?: (e: XxxEvent) => void;
+}> = ({ item, children, state, onSelect, onCancel }) => {
+  let ref = useRef<HTMLDivElement>(null);
 
   let { optionProps, isSelected, isDisabled } = useOption(
     { key: item.key },
@@ -185,9 +250,46 @@ export const MenuMenu: FC<{
     ref
   );
 
+  const onTriggerSelect = useCallback(
+    (e: XxxEvent) => {
+      triggerState.toggle("first");
+    },
+    [triggerState]
+  );
+
+  const onTriggerCancel = useCallback(
+    (e: XxxEvent) => {
+      triggerState.close();
+      onCancel?.(e);
+    },
+    [triggerState, onCancel]
+  );
+
+  const onMenuSelect = useCallback(
+    (e: XxxEvent) => {
+      triggerState.close();
+      onSelect?.(e);
+    },
+    [triggerState, onSelect]
+  );
+
+  const onMenuCancel = useCallback(
+    (e: XxxEvent) => {
+      triggerState.close();
+      ref.current?.focus();
+    },
+    [triggerState]
+  );
+
   const { onPress, onPressStart, ...restTriggerProps } = menuTriggerProps;
 
-  const { pressProps } = usePress({ isDisabled, ref, onPress, onPressStart }); // FIXME
+  const pressProps = useXxxEvents({
+    onSelect: onTriggerSelect,
+    onCancel: onTriggerCancel,
+    isDisabled,
+  });
+
+  //   const { pressProps } = usePress({ isDisabled, ref, onPress, onPressStart }); // FIXME
 
   let { isFocusVisible, focusProps } = useFocusRing();
 
@@ -208,7 +310,12 @@ export const MenuMenu: FC<{
         {children}
       </div>
       <MenuPopup anchorRef={ref} visible={triggerState.isOpen}>
-        <Menu {...menuProps} items={item.items}>
+        <Menu
+          {...menuProps}
+          items={item.items}
+          onSelect={onMenuSelect}
+          onCancel={onMenuCancel}
+        >
           {MenuItemRenderer}
         </Menu>
       </MenuPopup>
@@ -220,7 +327,9 @@ export const MenuLink: FC<{
   item: TmpMenuItemLink;
   state: ListState<TmpMenuAnyItem>;
   children: ReactNode;
-}> = ({ item, state, children }) => {
+  onSelect?: (e: XxxEvent) => void;
+  onCancel?: (e: XxxEvent) => void;
+}> = ({ item, state, children, onSelect, onCancel }) => {
   // Get props for the option element
   let ref = useRef(null);
   let { optionProps, isSelected, isDisabled } = useOption(
@@ -229,7 +338,9 @@ export const MenuLink: FC<{
     ref
   );
 
-  const { pressProps } = usePress({ isDisabled, ref, onPress });
+  const pressProps = useXxxEvents({ onSelect, onCancel, isDisabled });
+
+  //   const { pressProps } = usePress({ isDisabled, ref, onPress });
 
   // Determine whether we should show a keyboard
   // focus ring for accessibility
@@ -252,8 +363,10 @@ export const MenuSection: FC<{
   item: TmpMenuItemSection;
   state: ListState<TmpMenuAnyItem>;
   children: ReactNode;
+  onSelect?: (e: XxxEvent) => void;
+  onCancel?: (e: XxxEvent) => void;
   childNodes: Iterable<Node<TmpMenuAnyItem>>;
-}> = ({ item, state, children, childNodes }) => {
+}> = ({ item, state, children, childNodes, onSelect, onCancel }) => {
   let { itemProps, headingProps, groupProps } = useListBoxSection({
     heading: children,
   });
@@ -273,15 +386,25 @@ export const MenuSection: FC<{
     node.value = item.items[index]; // FIXME у дочерних node не заполняется value
 
     return (
-      <MenuAnyItem key={getItemKey(node.value)} node={node} state={state} />
+      <MenuAnyItem
+        key={getItemKey(node.value)}
+        node={node}
+        state={state}
+        onSelect={onSelect}
+        onCancel={onCancel}
+      />
     );
   });
 
   return (
     <>
       {separator}
-      <div {...itemProps} className={cls('SectionTitle')}>{title}</div>
-      <div {...groupProps} className={cls('SectionItems')}>{items}</div>
+      <div {...itemProps} className={cls("SectionTitle")}>
+        {title}
+      </div>
+      <div {...groupProps} className={cls("SectionItems")}>
+        {items}
+      </div>
     </>
   );
 };
@@ -289,14 +412,22 @@ export const MenuSection: FC<{
 export const MenuAnyItem: FC<{
   node: Node<TmpMenuAnyItem>;
   state: ListState<TmpMenuAnyItem>;
-}> = ({ node, state }) => {
+  onSelect?: (e: XxxEvent) => void;
+  onCancel?: (e: XxxEvent) => void;
+}> = ({ node, state, onSelect, onCancel }) => {
   const data = node.value;
 
   if (data) {
     switch (data.type) {
       case "option":
         return (
-          <MenuOption key={data.value} item={data} state={state}>
+          <MenuOption
+            key={data.value}
+            item={data}
+            state={state}
+            onSelect={onSelect}
+            onCancel={onCancel}
+          >
             {node.rendered}
           </MenuOption>
         );
@@ -307,6 +438,8 @@ export const MenuAnyItem: FC<{
             key={data.key}
             item={data}
             state={state}
+            onSelect={onSelect}
+            onCancel={onCancel}
             childNodes={node.childNodes}
           >
             {node.rendered}
@@ -314,13 +447,25 @@ export const MenuAnyItem: FC<{
         );
       case "menu":
         return (
-          <MenuMenu key={data.key} item={data} state={state}>
+          <MenuMenu
+            key={data.key}
+            item={data}
+            state={state}
+            onSelect={onSelect}
+            onCancel={onCancel}
+          >
             {node.rendered}
           </MenuMenu>
         );
       case "link":
         return (
-          <MenuLink key={data.key} item={data} state={state}>
+          <MenuLink
+            key={data.key}
+            item={data}
+            state={state}
+            onSelect={onSelect}
+            onCancel={onCancel}
+          >
             {node.rendered}
           </MenuLink>
         );
